@@ -627,7 +627,7 @@ button:active {
   color: white;
   font-size: clamp(1rem, 3vh, 1.8rem);
   font-weight: 900;
-  padding: 0.6rem;
+  padding: 1rem 0.6rem;
   border-radius: 0.4rem;
   text-transform: uppercase;
 }
@@ -638,7 +638,7 @@ button:active {
   color: var(--text);
   font-size: 0.7rem;
   font-weight: 700;
-  padding: 0.4rem;
+  padding: 1rem 0.4rem;
   border-radius: 0.4rem;
   border: 1px solid var(--border);
   text-transform: uppercase;
@@ -656,7 +656,7 @@ button:active {
   color: var(--text3);
   font-size: clamp(0.7rem, 2vh, 1rem);
   font-weight: 700;
-  padding: 0.4rem;
+  padding: 0.8rem 0.4rem;
   border-radius: 0.3rem;
   border: 1px solid var(--border);
 }
