@@ -477,6 +477,12 @@ class PlayerTracker {
       this.commitSet();
     };
     this.dom.stopBtn.onclick = () => this.stopTimer();
+  this.dom.timerCard.onclick = async () => {
+    if (this.dom.timerCard.classList.contains('done')) {
+      await initAudio();
+      this.commitSet();
+    }
+  };
     this.dom.resetBtn.onclick = () => this.resetExercise();
     this.dom.restBtns.forEach((btn) => {
       btn.onclick = async () => {
