@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <title>SET TRACKER</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <!-- SETUP SCREEN -->
+    <div id="setup-screen" class="screen">
+      <div class="setup-frame">
+        <div class="setup-header">
+          <span class="header-icon">🏋️</span>
+          <h1 class="title">SET TRACKER</h1>
+        </div>
+        <div id="continue-card" class="continue-card" style="display: none">
+          <div class="continue-info">
+            <span class="continue-label">CONTINUE</span>
+            <span id="continue-title" class="continue-title"></span>
+          </div>
+          <button id="continue-btn" class="continue-btn">►</button>
+          <button id="next-day-btn" class="next-day-btn" title="Next Day">
+            ⏭
+          </button>
+        </div>
+        <div class="month-selector">
+          <button class="month-btn" data-month="1">MONTH 1</button>
+          <button class="month-btn" data-month="2">MONTH 2</button>
+          <button class="month-btn" data-month="3">MONTH 3</button>
+        </div>
+        <div id="pass-toggle" class="pass-toggle" style="display: none">
+          <button class="pass-btn active" data-pass="1">PASS 1</button>
+          <button class="pass-btn" data-pass="2">PASS 2 (+5)</button>
+        </div>
+        <div id="day-grid" class="day-grid"></div>
+      </div>
+    </div>
+
+    <!-- TRACKER SCREEN -->
+    <div id="tracker-screen" class="screen" style="display: none">
+      <div class="tracker-frame">
+        <!-- Top Bar -->
+        <div class="tracker-header">
+          <div class="tracker-header-left">
+            <button id="back-btn" class="icon-btn">◄</button>
+            <span class="header-icon">🏋️</span>
+            <h1 class="title" id="workout-title">SET TRACKER</h1>
+          </div>
+          <div class="tracker-header-right">
+            <div class="mode-toggle" id="mode-toggle">
+              <span id="mode-1p" class="active-mode">1P</span>
+              <span id="mode-2p">2P 🐺</span>
+            </div>
+            <button id="prev-workout-btn" class="icon-btn" title="Previous Workout">⏮</button>
+            <button id="next-workout-btn" class="icon-btn" title="Next Workout">⏭</button>
+          </div>
+        </div>
+
+        <!-- Exercise Nav -->
+        <div class="exercise-nav" id="exercise-nav">
+          <button class="nav-btn" id="prev-ex">◄</button>
+          <div class="exercise-info">
+            <span id="exercise-name" class="exercise-name">Exercise</span>
+            <span id="exercise-count" class="exercise-count">(1/5)</span>
+          </div>
+          <button class="nav-btn" id="next-ex">►</button>
+        </div>
+
+        <!-- Players -->
+        <div id="players-area" class="players-area">
+          <!-- Player panels injected by JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Player Panel Template -->
+    <template id="player-template">
+      <div class="player-panel">
+        <div class="player-tag"></div>
+        <div class="player-grid">
+          <!-- Ignitor Card -->
+          <div class="ignitor-card" data-phase="ignitor">
+            <div class="ignitor-header">
+              <span class="ignitor-title">🔥 IGNITOR SET</span>
+              <span class="ignitor-range"></span>
+            </div>
+            <div class="ignitor-stepper">
+              <button class="stepper-btn stepper-down">▼</button>
+              <span class="ignitor-value">10</span>
+              <button class="stepper-btn stepper-up">▲</button>
+            </div>
+            <button class="ignitor-log-btn">LOG IGNITOR</button>
+            <div class="ignitor-result" style="display: none">
+              <span class="result-text"></span>
+            </div>
+          </div>
+
+          <!-- Path Selector -->
+          <div class="path-selector" style="display: none">
+            <select class="path-dropdown">
+              <option value="jacked">✅ Jacked</option>
+              <option value="jackedToMax">🔥 Jacked to the Max</option>
+              <option value="jackedUp">⬆️ Jacked Up</option>
+              <option value="jackedDown">⬇️ Jacked Down</option>
+            </select>
+          </div>
+
+          <!-- Box Score -->
+          <div class="box-score-card">
+            <div class="box-score-header">BOX SCORE</div>
+            <div class="box-score-display">
+              <span class="box-current">0</span>
+              <span class="box-separator">/</span>
+              <span class="box-target">--</span>
+            </div>
+            <div class="box-bar-container">
+              <div class="box-bar-fill"></div>
+            </div>
+            <div class="box-remaining">-- remaining</div>
+          </div>
+
+          <!-- This Set -->
+          <div class="set-input-card">
+            <div class="set-input-header">
+              <div class="set-input-label">THIS SET</div>
+              <div class="set-input-value">0</div>
+            </div>
+            <div class="set-input-buttons">
+              <button class="rep-btn" data-delta="1">+1</button>
+              <button class="rep-btn" data-delta="5">+5</button>
+              <button class="rep-btn" data-delta="-1">-1</button>
+              <button class="rep-btn" data-delta="-5">-5</button>
+            </div>
+          </div>
+
+          <!-- Sets Display -->
+          <div class="sets-card">
+            <div class="sets-label">SETS</div>
+            <div class="sets-value">0</div>
+          </div>
+
+          <!-- Drop Set Indicator -->
+          <div class="drop-set-banner" style="display: none">
+            <span>⚡ DROP SET</span>
+            <div class="drop-set-info"></div>
+          </div>
+
+          <!-- Back to Jacked Banner -->
+          <div class="btj-banner" style="display: none">
+            <span class="btj-text"></span>
+          </div>
+
+          <!-- Commit Set Button -->
+          <div class="commit-row">
+            <button class="commit-btn">+ SET</button>
+            <button class="stop-btn">STOP</button>
+            <button class="reset-btn">RESET</button>
+          </div>
+
+          <!-- Timer -->
+          <div class="timer-card">
+            <div class="timer-label-tag">REST</div>
+            <div class="timer-text">--</div>
+          </div>
+
+          <!-- Rest Options -->
+          <div class="rest-options">
+            <button class="rest-btn" data-time="45">45s</button>
+            <button class="rest-btn" data-time="60">60s</button>
+            <button class="rest-btn active" data-time="90">90s</button>
+            <button class="rest-btn" data-time="120">2:00</button>
+            <button class="rest-btn" data-time="150">2:30</button>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <script src="data.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

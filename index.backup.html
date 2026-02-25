@@ -1,0 +1,826 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <title>SET TRACKER DUO</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <style>
+      /* --- Base Styles --- */
+      :root {
+        --safe-area-inset-top: env(safe-area-inset-top, 0px);
+        --safe-area-inset-right: env(safe-area-inset-right, 0.5vw);
+        --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+        --safe-area-inset-left: env(safe-area-inset-left, 0.5vw);
+        --accent-red: #d10000;
+        --accent-orange: #d17a00;
+        --bg-dark: #121212;
+        --card-bg: #1e1e1e;
+      }
+      html,
+      body {
+        height: 100%;
+        width: 100%;
+        overflow: hidden;
+        margin: 0;
+        padding: 0;
+        background-color: var(
+          --bg-dark
+        ); /* Matches app frame to hide any potential gaps */
+      }
+      body {
+        font-family: "Roboto", sans-serif;
+        -webkit-tap-highlight-color: transparent;
+        color: #ffffff;
+        display: flex;
+        flex-direction: column;
+      }
+      .container {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        box-sizing: border-box;
+        height: 100%;
+        min-height: 0;
+      }
+      .app-frame {
+        background-color: var(--bg-dark);
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        /* Minimal padding, rely on structure to fill space */
+        padding: max(var(--safe-area-inset-top), 0.5rem)
+          max(var(--safe-area-inset-right), 0.5rem) 0.2rem
+          max(var(--safe-area-inset-left), 0.5rem);
+        box-sizing: border-box;
+        overflow: hidden;
+      }
+      .header {
+        display: flex;
+        align-items: center;
+        padding-bottom: 0.3rem;
+        border-bottom: 1px solid #333;
+        margin-bottom: 0.3rem;
+        flex-shrink: 0;
+        justify-content: space-between;
+      }
+      .header-left {
+        display: flex;
+        align-items: center;
+        overflow: hidden;
+      }
+      .header-right {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .header-icon {
+        font-size: clamp(1.2rem, 3vw, 1.8rem);
+        margin-right: 0.6rem;
+        color: #ffffff;
+      }
+      .title {
+        font-size: clamp(1rem, 3vw, 1.6rem);
+        font-weight: 900;
+        text-transform: uppercase;
+        color: #ffffff;
+        margin: 0;
+        letter-spacing: 0.05em;
+        line-height: 1;
+        text-overflow: ellipsis;
+        overflow: hidden;
+        white-space: nowrap;
+      }
+
+      /* --- Debug Toggle --- */
+      .debug-control {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        cursor: pointer;
+        opacity: 0.6;
+        transition: opacity 0.2s;
+      }
+      .debug-control:hover {
+        opacity: 1;
+      }
+      .debug-control input {
+        cursor: pointer;
+        width: 14px;
+        height: 14px;
+        accent-color: var(--accent-orange);
+      }
+      .debug-control label {
+        font-size: 0.6rem;
+        font-weight: 900;
+        color: #888;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        cursor: pointer;
+      }
+
+      /* --- Toggle Switch --- */
+      .mode-toggle {
+        display: flex;
+        align-items: center;
+        background: #2a2a2a;
+        padding: 4px;
+        border-radius: 20px;
+        cursor: pointer;
+        border: 1px solid #444;
+        transition: all 0.3s;
+      }
+      .mode-toggle span {
+        font-size: 0.65rem;
+        font-weight: 700;
+        padding: 4px 10px;
+        border-radius: 16px;
+        transition: all 0.2s;
+        text-transform: uppercase;
+        color: #888;
+      }
+      .mode-toggle .active-mode {
+        background: var(--accent-red);
+        color: white;
+      }
+
+      /* --- Layout Logic --- */
+      .players-wrapper {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 0.6rem;
+        flex: 1; /* Grow to fill all available vertical space */
+        min-height: 0;
+        transition: all 0.4s ease;
+      }
+      .players-wrapper.two-player {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .player-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 0.3rem;
+        min-width: 0;
+        min-height: 0;
+        border-radius: 0.5rem;
+        transition: transform 0.3s;
+        height: 100%;
+      }
+      .two-player .player-panel:first-child {
+        border-right: 1px solid #333;
+        padding-right: 0.3rem;
+      }
+
+      /* Player Label */
+      .player-tag {
+        font-size: 0.6rem;
+        font-weight: 900;
+        color: #555;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        display: none;
+        margin-bottom: 0.1rem;
+        flex-shrink: 0;
+      }
+      .two-player .player-tag {
+        display: block;
+      }
+
+      /* --- Audio Banner --- */
+      .audio-enable-banner {
+        background-color: var(--accent-orange);
+        color: #ffffff;
+        padding: 0.5rem;
+        text-align: center;
+        font-size: 0.8rem;
+        font-weight: 700;
+        cursor: pointer;
+        border-radius: 0.3rem;
+        margin-bottom: 0.6rem;
+        display: none;
+        flex-shrink: 0;
+      }
+      .audio-enable-banner.show {
+        display: block;
+      }
+
+      /* --- Main Grid Layout --- */
+      .main-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        /* MAXIMIZED VERTICAL LAYOUT: 1.8 (Displays) - 1.4 (Buttons) - 0.5 (Timer Select) */
+        grid-template-rows: 1.8fr 1.4fr 0.5fr;
+        gap: 0.5rem;
+        height: 100%;
+        min-height: 0;
+        flex: 1;
+      }
+
+      /* --- Display Boxes --- */
+      .display-box {
+        background-color: var(--card-bg);
+        border-radius: 0.5rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        padding: 0.4rem;
+        box-shadow: 0 0.2rem 0.4rem rgba(0, 0, 0, 0.3);
+        position: relative;
+        height: 100%;
+        box-sizing: border-box;
+        min-height: 0;
+      }
+      .display-box .count {
+        /* Aggressive scaling for Tablet Landscape */
+        font-size: clamp(2.5rem, 18vh, 12rem);
+        text-align: center;
+        color: #ffffff;
+        font-weight: 900;
+        letter-spacing: -0.05em;
+        margin: 0;
+        line-height: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-grow: 1;
+        width: 100%;
+      }
+      .display-box .label {
+        text-align: center;
+        color: #888;
+        font-size: clamp(0.5rem, 2vh, 1rem);
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        line-height: 1;
+        padding-bottom: 0.2rem;
+      }
+
+      .timer-text {
+        font-size: clamp(3rem, 20vh, 14rem);
+        font-weight: 900;
+        line-height: 1;
+        text-align: center;
+        color: #ffffff;
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-grow: 1;
+        transition: font-size 0.3s;
+      }
+      .timer-text.message {
+        font-size: clamp(1rem, 6vh, 3rem);
+        font-weight: 700;
+      }
+
+      .timer-label-container {
+        position: absolute;
+        top: 0.3rem;
+        left: 0;
+        right: 0;
+        text-align: center;
+        z-index: 5;
+      }
+      .timer-label {
+        font-size: 0.55rem;
+        color: #fff;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        background: rgba(0, 0, 0, 0.5);
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-weight: 700;
+      }
+
+      /* --- Buttons --- */
+      .reps-buttons-container {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: 1fr 1fr;
+        gap: 0.4rem;
+      }
+      .rep-button {
+        background-color: #333;
+        border: none;
+        border-radius: 0.4rem;
+        color: white;
+        font-size: clamp(1rem, 3.5vh, 2.5rem);
+        font-weight: 700;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        touch-action: manipulation;
+        height: 100%;
+      }
+      .rep-button:active {
+        background-color: #555;
+        transform: scale(0.95);
+      }
+
+      .stop-reset-container {
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+        height: 100%;
+      }
+      .action-button {
+        background-color: var(--card-bg);
+        border: 1px solid #333;
+        border-radius: 0.4rem;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        color: white;
+        cursor: pointer;
+        font-size: clamp(0.7rem, 2.5vh, 1.2rem);
+        font-weight: 700;
+        text-transform: uppercase;
+        flex: 1;
+        touch-action: manipulation;
+      }
+      .action-button:active {
+        background-color: #2a2a2a;
+      }
+
+      .pm-buttons-container {
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+        height: 100%;
+      }
+      .plus-button,
+      .minus-button {
+        border-radius: 0.4rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        cursor: pointer;
+        color: white;
+        border: 1px solid #333;
+        touch-action: manipulation;
+        width: 100%;
+      }
+      .plus-button {
+        background-color: var(--accent-red);
+        font-size: clamp(3rem, 15vh, 8rem);
+        flex: 3;
+      }
+      .minus-button {
+        background-color: #333;
+        font-size: clamp(1.5rem, 6vh, 3rem);
+        flex: 1;
+      }
+
+      /* --- Info Section --- */
+      .info-section {
+        background-color: var(--card-bg);
+        border-radius: 0.5rem;
+        padding: 0.2rem;
+        grid-column: 1 / 4;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        justify-content: center;
+        height: 100%;
+        box-sizing: border-box;
+      }
+      .timer-selector {
+        display: flex;
+        gap: 0.4rem;
+        height: 100%;
+        width: 100%;
+      }
+      .timer-option {
+        background-color: #2a2a2a;
+        border: 1px solid #444;
+        border-radius: 0.3rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: clamp(0.8rem, 3vh, 1.8rem);
+        font-weight: 700;
+        color: #888;
+        cursor: pointer;
+        flex: 1;
+        text-align: center;
+        height: 100%;
+      }
+      .timer-option.active {
+        background-color: var(--accent-red);
+        color: white;
+        border-color: var(--accent-red);
+      }
+
+      /* --- Audio Status --- */
+      #audio-status {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        padding: 4px;
+        background: rgba(0, 0, 0, 0.8);
+        color: #666;
+        font-size: 10px;
+        text-align: center;
+        z-index: 1000;
+        display: none;
+      }
+
+      /* Mobile Adjustments */
+      @media (max-width: 600px) {
+        .two-player {
+          grid-template-columns: 1fr;
+          grid-template-rows: 1fr 1fr;
+        }
+        .two-player .player-panel:first-child {
+          border-right: none;
+          border-bottom: 1px solid #333;
+          padding-right: 0;
+          padding-bottom: 0.3rem;
+        }
+        .main-grid {
+          grid-template-rows: 1.6fr 1.2fr 0.5fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="audio-status">Audio: <span id="audio-status-text">...</span></div>
+
+    <div class="container">
+      <div class="app-frame">
+        <div class="audio-enable-banner" id="audio-enable-banner">
+          🔊 Tap to enable sound
+        </div>
+
+        <div class="header">
+          <div class="header-left">
+            <div class="header-icon">🏋️</div>
+            <h1 class="title">SET TRACKER</h1>
+          </div>
+          <div class="header-right">
+            <div class="debug-control">
+              <input type="checkbox" id="debug-toggle" />
+              <label for="debug-toggle">Debug</label>
+            </div>
+            <div class="mode-toggle" id="mode-toggle">
+              <span id="mode-1p" class="active-mode">1 Player</span>
+              <span id="mode-2p">2 Player 🐺</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="players-wrapper" id="players-container">
+          <!-- Player 1 -->
+          <div class="player-panel" id="player-0">
+            <div class="player-tag">Player 1</div>
+            <div class="main-grid">
+              <div class="display-box">
+                <div class="count val-reps">0</div>
+                <div class="label">REPS</div>
+              </div>
+              <div class="display-box timer-display">
+                <div class="timer-label-container">
+                  <div class="timer-label">REST</div>
+                </div>
+                <div class="timer-text">--</div>
+              </div>
+              <div class="display-box">
+                <div class="count val-sets">0</div>
+                <div class="label">SETS</div>
+              </div>
+
+              <div class="reps-buttons-container">
+                <button class="rep-button btn-r-p5">+5</button>
+                <button class="rep-button btn-r-m5">-5</button>
+                <button class="rep-button btn-r-p1">+1</button>
+                <button class="rep-button btn-r-m1">-1</button>
+              </div>
+              <div class="stop-reset-container">
+                <div class="action-button btn-stop">STOP</div>
+                <div class="action-button btn-reset">RESET</div>
+              </div>
+              <div class="pm-buttons-container">
+                <div class="minus-button btn-s-m">-</div>
+                <div class="plus-button btn-s-p">+</div>
+              </div>
+
+              <div class="info-section">
+                <div class="timer-selector">
+                  <div class="timer-option" data-time="60">60s</div>
+                  <div class="timer-option active" data-time="90">90s</div>
+                  <div class="timer-option" data-time="120">120s</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Player 2 -->
+          <div class="player-panel" id="player-1" style="display: none">
+            <div class="player-tag">Player 2</div>
+            <div class="main-grid">
+              <div class="display-box">
+                <div class="count val-reps">0</div>
+                <div class="label">REPS</div>
+              </div>
+              <div class="display-box timer-display">
+                <div class="timer-label-container">
+                  <div class="timer-label">REST</div>
+                </div>
+                <div class="timer-text">--</div>
+              </div>
+              <div class="display-box">
+                <div class="count val-sets">0</div>
+                <div class="label">SETS</div>
+              </div>
+
+              <div class="reps-buttons-container">
+                <button class="rep-button btn-r-p5">+5</button>
+                <button class="rep-button btn-r-m5">-5</button>
+                <button class="rep-button btn-r-p1">+1</button>
+                <button class="rep-button btn-r-m1">-1</button>
+              </div>
+              <div class="stop-reset-container">
+                <div class="action-button btn-stop">STOP</div>
+                <div class="action-button btn-reset">RESET</div>
+              </div>
+              <div class="pm-buttons-container">
+                <div class="minus-button btn-s-m">-</div>
+                <div class="plus-button btn-s-p">+</div>
+              </div>
+
+              <div class="info-section">
+                <div class="timer-selector">
+                  <div class="timer-option" data-time="60">60s</div>
+                  <div class="timer-option active" data-time="90">90s</div>
+                  <div class="timer-option" data-time="120">120s</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // --- Audio Engine ---
+      let audioInitialized = false;
+      let chimeSynth = null;
+      let pipSynth = null;
+      let pingPongDelay = null;
+
+      async function initAudio() {
+        if (audioInitialized) return;
+        try {
+          await Tone.start();
+
+          pingPongDelay = new Tone.PingPongDelay({
+            delayTime: "8n",
+            feedback: 0.6,
+            wet: 0.5,
+          }).toDestination();
+
+          chimeSynth = new Tone.Synth({
+            oscillator: { type: "sawtooth" },
+            envelope: { attack: 0.01, decay: 0.2, sustain: 0.2, release: 0.4 },
+          }).connect(pingPongDelay);
+
+          // "Staccato Pip" Synth (dry, low pitch, very short)
+          pipSynth = new Tone.Synth({
+            oscillator: { type: "sine" },
+            envelope: { attack: 0.001, decay: 0.03, sustain: 0, release: 0.03 },
+          }).toDestination();
+
+          audioInitialized = true;
+          document
+            .getElementById("audio-enable-banner")
+            .classList.remove("show");
+          updateStatus("Audio Ready");
+        } catch (e) {
+          updateStatus("Audio Init Failed");
+        }
+      }
+
+      function updateStatus(msg) {
+        document.getElementById("audio-status-text").textContent = msg;
+      }
+
+      function playChimes(playerId) {
+        if (!audioInitialized) return;
+        const now = Tone.now();
+
+        if (playerId === 0) {
+          chimeSynth.triggerAttackRelease("C5", "16n", now);
+          chimeSynth.triggerAttackRelease("A5", "16n", now + 0.15);
+          chimeSynth.triggerAttackRelease("E6", "16n", now + 0.3);
+        } else {
+          chimeSynth.triggerAttackRelease("F4", "16n", now);
+          chimeSynth.triggerAttackRelease("D4", "16n", now + 0.15);
+          chimeSynth.triggerAttackRelease("Bb3", "16n", now + 0.3);
+        }
+      }
+
+      async function playToggleSound(count) {
+        if (!audioInitialized) await initAudio();
+        if (!audioInitialized) return;
+        const now = Tone.now();
+        for (let i = 0; i < count; i++) {
+          pipSynth.triggerAttackRelease("G3", "32n", now + i * 0.1);
+        }
+      }
+
+      // --- Player Logic Class ---
+      class PlayerTracker {
+        constructor(id) {
+          this.id = id;
+          this.sets = 0;
+          this.reps = 0;
+          this.timerInterval = null;
+          this.timeLeft = 0;
+          this.restTime = 90;
+
+          this.el = document.getElementById(`player-${id}`);
+          this.setupElements();
+          this.setupListeners();
+        }
+
+        setupElements() {
+          this.dom = {
+            sets: this.el.querySelector(".val-sets"),
+            reps: this.el.querySelector(".val-reps"),
+            timer: this.el.querySelector(".timer-text"),
+            display: this.el.querySelector(".timer-display"),
+            timerOptions: this.el.querySelectorAll(".timer-option"),
+            btnSetPlus: this.el.querySelector(".btn-s-p"),
+            btnSetMinus: this.el.querySelector(".btn-s-m"),
+            btnRepP1: this.el.querySelector(".btn-r-p1"),
+            btnRepM1: this.el.querySelector(".btn-r-m1"),
+            btnRepP5: this.el.querySelector(".btn-r-p5"),
+            btnRepM5: this.el.querySelector(".btn-r-m5"),
+            btnStop: this.el.querySelector(".btn-stop"),
+            btnReset: this.el.querySelector(".btn-reset"),
+          };
+        }
+
+        setupListeners() {
+          this.dom.btnSetPlus.onclick = async () => {
+            await initAudio();
+            this.sets++;
+            this.updateUI();
+            this.startTimer();
+          };
+          this.dom.btnSetMinus.onclick = async () => {
+            await initAudio();
+            if (this.sets > 0) this.sets--;
+            this.updateUI();
+            this.stopTimer();
+          };
+
+          this.dom.btnRepP1.onclick = async () => {
+            await initAudio();
+            this.reps++;
+            this.updateUI();
+          };
+          this.dom.btnRepM1.onclick = async () => {
+            await initAudio();
+            this.reps = Math.max(0, this.reps - 1);
+            this.updateUI();
+          };
+          this.dom.btnRepP5.onclick = async () => {
+            await initAudio();
+            this.reps += 5;
+            this.updateUI();
+          };
+          this.dom.btnRepM5.onclick = async () => {
+            await initAudio();
+            this.reps = Math.max(0, this.reps - 5);
+            this.updateUI();
+          };
+          this.dom.btnStop.onclick = () => this.stopTimer();
+          this.dom.btnReset.onclick = () => {
+            this.sets = 0;
+            this.reps = 0;
+            this.stopTimer();
+            this.dom.timer.textContent = "--";
+            this.updateUI();
+          };
+          this.dom.timerOptions.forEach((opt) => {
+            opt.onclick = async () => {
+              await initAudio();
+              this.restTime = parseInt(opt.dataset.time);
+              this.dom.timerOptions.forEach((o) =>
+                o.classList.remove("active"),
+              );
+              opt.classList.add("active");
+              this.stopTimer();
+            };
+          });
+        }
+
+        updateUI() {
+          this.dom.sets.textContent = this.sets;
+          this.dom.reps.textContent = this.reps;
+        }
+
+        startTimer() {
+          this.stopTimer();
+          const isDebug = document.getElementById("debug-toggle").checked;
+          this.timeLeft = isDebug ? 5 : this.restTime;
+          this.dom.timer.textContent = `${this.timeLeft}s`;
+          this.dom.timer.classList.remove("message");
+          this.dom.display.style.backgroundColor = "var(--card-bg)";
+          this.timerInterval = setInterval(() => {
+            this.timeLeft--;
+            this.dom.timer.textContent = `${this.timeLeft}s`;
+            if (this.timeLeft <= 0) {
+              clearInterval(this.timerInterval);
+              playChimes(this.id);
+              this.dom.timer.textContent = "DONE";
+              this.dom.timer.classList.add("message");
+              this.dom.display.style.backgroundColor = "var(--accent-red)";
+              this.flash();
+            } else if (this.timeLeft <= 10) {
+              this.dom.display.style.backgroundColor = "var(--accent-red)";
+            } else if (this.timeLeft <= 30) {
+              this.dom.display.style.backgroundColor = "var(--accent-orange)";
+            }
+          }, 1000);
+        }
+
+        stopTimer() {
+          if (this.timerInterval) clearInterval(this.timerInterval);
+          this.dom.display.style.backgroundColor = "var(--card-bg)";
+          this.dom.timer.textContent = "--";
+          this.dom.timer.classList.add("message");
+        }
+
+        flash() {
+          let count = 0;
+          const interval = setInterval(() => {
+            this.dom.display.style.opacity =
+              this.dom.display.style.opacity === "0.5" ? "1" : "0.5";
+            if (++count > 6) {
+              clearInterval(interval);
+              this.dom.display.style.opacity = "1";
+            }
+          }, 200);
+        }
+      }
+
+      // --- App Management ---
+      const players = [new PlayerTracker(0), new PlayerTracker(1)];
+      const modeToggle = document.getElementById("mode-toggle");
+      const mode1p = document.getElementById("mode-1p");
+      const mode2p = document.getElementById("mode-2p");
+      const container = document.getElementById("players-container");
+      const player2Panel = document.getElementById("player-1");
+      const debugToggle = document.getElementById("debug-toggle");
+
+      modeToggle.onclick = async () => {
+        const is2P = !container.classList.contains("two-player");
+        if (is2P) {
+          container.classList.add("two-player");
+          mode2p.classList.add("active-mode");
+          mode1p.classList.remove("active-mode");
+          player2Panel.style.display = "flex";
+          await playToggleSound(2);
+        } else {
+          container.classList.remove("two-player");
+          mode1p.classList.add("active-mode");
+          mode2p.classList.remove("active-mode");
+          player2Panel.style.display = "none";
+          await playToggleSound(1);
+        }
+      };
+
+      debugToggle.onchange = () => {
+        const isDebug = debugToggle.checked;
+        document.getElementById("audio-status").style.display = isDebug
+          ? "block"
+          : "none";
+        players.forEach((p) => p.stopTimer());
+      };
+
+      document.body.addEventListener("touchstart", initAudio, { once: true });
+      document.getElementById("audio-enable-banner").onclick = initAudio;
+    </script>
+  </body>
+</html>
