@@ -417,6 +417,7 @@ class PlayerTracker {
     this.id = id;
     this.timerInterval = null;
     this.timeLeft = 0;
+    this.userRestOverride = null; // sticky rest time chosen by user, persists across exercises
     this.dom = {
       ignitorCard: el.querySelector(".ignitor-card"),
       ignitorRange: el.querySelector(".ignitor-range"),
@@ -489,7 +490,9 @@ class PlayerTracker {
         await initAudio();
         playPip();
         const es = this.getES();
-        es.restTime = parseInt(btn.dataset.time);
+        const time = parseInt(btn.dataset.time);
+        es.restTime = time;
+        this.userRestOverride = time; // sticky: remember across exercises
         this.dom.restBtns.forEach((b) =>
           b.classList.toggle(
             "active",
@@ -547,6 +550,10 @@ class PlayerTracker {
     // Set input
     this.dom.setInputValue.textContent = es.setReps;
     this.dom.setsValue.textContent = es.sets;
+    // Apply sticky rest override if user chose one
+    if (this.userRestOverride != null) {
+      es.restTime = this.userRestOverride;
+    }
     // Rest buttons
     this.dom.restBtns.forEach((b) =>
       b.classList.toggle("active", parseInt(b.dataset.time) === es.restTime),
@@ -567,7 +574,7 @@ class PlayerTracker {
     es.ignitorReps = es.ignitorInput;
     es.path = detectPath(item, es.ignitorReps);
     es.boxScore = calcBoxScore(item, es.ignitorReps, es.path);
-    es.restTime = getRestForPath(item, es.path);
+    es.restTime = this.userRestOverride != null ? this.userRestOverride : getRestForPath(item, es.path);
     es.setReps = es.ignitorReps; // default first set to ignitor reps
     playPip();
     this.startTimer(es.restTime);
@@ -581,7 +588,7 @@ class PlayerTracker {
     es.path = this.dom.pathDropdown.value;
     if (es.ignitorReps != null) {
       es.boxScore = calcBoxScore(item, es.ignitorReps, es.path);
-      es.restTime = getRestForPath(item, es.path);
+      es.restTime = this.userRestOverride != null ? this.userRestOverride : getRestForPath(item, es.path);
     }
     this.updateBoxScore(es);
     this.dom.restBtns.forEach((b) =>
@@ -697,7 +704,7 @@ class PlayerTracker {
       } else if (es.btjActive) {
         es.btjActive = null;
         this.dom.btjBanner.style.display = "none";
-        es.restTime = getRestForPath(item, es.path);
+        es.restTime = this.userRestOverride != null ? this.userRestOverride : getRestForPath(item, es.path);
       }
       this.dom.restBtns.forEach((b) =>
         b.classList.toggle("active", parseInt(b.dataset.time) === es.restTime),
