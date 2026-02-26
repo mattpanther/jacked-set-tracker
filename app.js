@@ -729,7 +729,7 @@ class PlayerTracker {
     this.stopTimer();
     this.timeLeft = duration;
     this.dom.timerText.textContent = this.timeLeft + "s";
-    this.dom.timerCard.className = "timer-card";
+    this.dom.timerCard.className = "timer-card active";
     this.timerInterval = setInterval(() => {
       this.timeLeft--;
       this.dom.timerText.textContent = this.timeLeft + "s";
@@ -738,11 +738,11 @@ class PlayerTracker {
         this.timerInterval = null;
         playChime(this.id);
         this.dom.timerText.textContent = "GO!";
-        this.dom.timerCard.className = "timer-card done";
+        this.dom.timerCard.className = "timer-card active done";
       } else if (this.timeLeft <= 10) {
-        this.dom.timerCard.className = "timer-card urgent";
+        this.dom.timerCard.className = "timer-card active urgent";
       } else if (this.timeLeft <= 30) {
-        this.dom.timerCard.className = "timer-card warning";
+        this.dom.timerCard.className = "timer-card active warning";
       }
     }, 1000);
   }

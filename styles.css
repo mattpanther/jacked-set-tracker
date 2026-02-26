@@ -604,6 +604,12 @@ button:active {
   font-weight: 900;
   transition: color 0.3s;
 }
+.timer-card.active .timer-text {
+  font-size: clamp(3rem, 18vh, 8rem);
+}
+.timer-card.active .timer-label-tag {
+  font-size: 0.6rem;
+}
 .timer-card.warning {
   background: var(--orange);
 }
