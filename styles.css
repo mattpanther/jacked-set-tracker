@@ -705,6 +705,41 @@ button:active {
   color: white;
 }
 
+/* Remaining Reps Toast */
+.reps-remaining-toast {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  text-align: center;
+  font-size: 0.8rem;
+  font-weight: 900;
+  padding: 0.6rem 0.8rem;
+  padding-bottom: calc(0.6rem + env(safe-area-inset-bottom, 0px));
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: linear-gradient(135deg, #004d40 0%, #00695c 100%);
+  color: var(--teal);
+  border-top: 1px solid var(--teal);
+  opacity: 0;
+  transform: translateY(100%);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+.reps-remaining-toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Fireworks Canvas */
+.fireworks-canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 9999;
+  pointer-events: none;
+}
+
 /* --- Animations --- */
 @keyframes fadeIn {
   from {

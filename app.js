@@ -70,6 +70,111 @@ function playTronComplete() {
   tronSynth.triggerAttackRelease("C5", "16n", now + 0.12);
 }
 
+// ===== FIREWORKS =====
+function launchFireworks(container) {
+  const canvas = document.createElement("canvas");
+  canvas.className = "fireworks-canvas";
+
+  let w, h;
+  if (container) {
+    // 2P mode: scope to player panel
+    container.style.position = "relative";
+    canvas.style.position = "absolute";
+    canvas.style.top = "0";
+    canvas.style.left = "0";
+    container.appendChild(canvas);
+    w = container.offsetWidth;
+    h = container.offsetHeight;
+  } else {
+    // 1P mode: full screen overlay
+    document.body.appendChild(canvas);
+    w = window.innerWidth;
+    h = window.innerHeight;
+  }
+
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = w * dpr;
+  canvas.height = h * dpr;
+  canvas.style.width = w + "px";
+  canvas.style.height = h + "px";
+
+  const ctx = canvas.getContext("2d");
+  ctx.scale(dpr, dpr);
+
+  const particles = [];
+  const colors = [
+    "#ff2d55", "#ff9500", "#ffcc00", "#34c759",
+    "#00c7be", "#007aff", "#af52de", "#ff375f",
+    "#ff6b6b", "#ffd93d", "#6bcb77", "#4d96ff",
+  ];
+
+  // Launch several bursts across the area
+  const burstCount = 6;
+  for (let b = 0; b < burstCount; b++) {
+    const cx = w * (0.1 + Math.random() * 0.8);
+    const cy = h * (0.1 + Math.random() * 0.5);
+    const count = 40 + Math.floor(Math.random() * 20);
+    const burstDelay = b * 250;
+    for (let i = 0; i < count; i++) {
+      const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.4;
+      const speed = 3 + Math.random() * 5;
+      particles.push({
+        x: cx,
+        y: cy,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        life: 1,
+        decay: 0.006 + Math.random() * 0.008,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        size: 3 + Math.random() * 3,
+        delay: burstDelay,
+        born: false,
+      });
+    }
+  }
+
+  const startTime = performance.now();
+  function animate(now) {
+    ctx.clearRect(0, 0, w, h);
+    const elapsed = now - startTime;
+    let alive = false;
+    for (const p of particles) {
+      if (elapsed < p.delay) { alive = true; continue; }
+      if (!p.born) { p.born = true; }
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vy += 0.05; // gravity
+      p.vx *= 0.99; // slight drag
+      p.life -= p.decay;
+      if (p.life <= 0) continue;
+      alive = true;
+      // Glow
+      ctx.globalAlpha = p.life * 0.15;
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size * p.life * 3, 0, Math.PI * 2);
+      ctx.fill();
+      // Core
+      ctx.globalAlpha = p.life;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+      ctx.fill();
+      // Trail
+      ctx.globalAlpha = p.life * 0.4;
+      ctx.beginPath();
+      ctx.arc(p.x - p.vx, p.y - p.vy, p.size * p.life * 0.6, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    if (alive) {
+      requestAnimationFrame(animate);
+    } else {
+      canvas.remove();
+    }
+  }
+  requestAnimationFrame(animate);
+}
+
 // ===== HELPERS =====
 function getMonthData() {
   return WORKOUTS[state.month];
@@ -447,6 +552,7 @@ class PlayerTracker {
       resetBtn: el.querySelector(".reset-btn"),
       repBtns: el.querySelectorAll(".rep-btn"),
       restBtns: el.querySelectorAll(".rest-btn"),
+      repsToast: el.querySelector(".reps-remaining-toast"),
     };
     this.bindEvents();
   }
@@ -565,6 +671,8 @@ class PlayerTracker {
     this.updateDropSet(es);
     // BTJ banner
     this.dom.btjBanner.style.display = "none";
+    // Hide remaining toast on exercise switch
+    this.dom.repsToast.style.display = "none";
   }
 
   logIgnitor() {
@@ -717,12 +825,36 @@ class PlayerTracker {
     this.updateDropSet(es);
     // Check completion
     const useSetCount = this.isJttmSetMode(item, es);
+    let completed = false;
     if (useSetCount) {
-      if (es.sets >= item.jttmSets) playTronComplete();
+      if (es.sets >= item.jttmSets) { playTronComplete(); completed = true; }
     } else if (es.boxScore && es.totalReps >= es.boxScore) {
-      playTronComplete();
+      playTronComplete(); completed = true;
     }
-    this.startTimer(es.restTime);
+    if (completed) {
+      const fw = state.mode === "2p" ? this.el : null;
+      launchFireworks(fw);
+    }
+
+    // Show remaining reps/sets toast
+    this.showRemainingToast(es, item, useSetCount, completed);
+
+    if (completed && state.exerciseIdx + 1 < getAllItems().length) {
+      // Auto-advance after brief delay so user sees completion
+      const restTime = es.restTime;
+      const fromIdx = state.exerciseIdx;
+      this.startTimer(restTime);
+      setTimeout(() => {
+        if (state.exerciseIdx !== fromIdx) return; // user already navigated
+        players.forEach((p) => p.saveCurrentState());
+        state.exerciseIdx = fromIdx + 1;
+        saveState();
+        renderExercise();
+        // Timer continues running from commitSet — don't restart
+      }, 1500);
+    } else {
+      this.startTimer(es.restTime);
+    }
   }
 
   startTimer(duration) {
@@ -770,12 +902,51 @@ class PlayerTracker {
       ? Math.round((item.range[0] + item.range[1]) / 2)
       : 10;
     es.ignitorInput = mid;
+    this.dom.repsToast.style.display = "none";
     es.path = item?.isCorrective
       ? "corrective"
       : state.month === 1
         ? "jacked"
         : "jackedToMax";
     this.renderForExercise(item, state.exerciseIdx);
+  }
+
+  showRemainingToast(es, item, useSetCount, completed) {
+    const toast = this.dom.repsToast;
+    if (completed) {
+      toast.style.display = "none";
+      return;
+    }
+
+    let msg;
+    if (useSetCount) {
+      const remaining = item.jttmSets - es.sets;
+      msg = `${remaining} set${remaining !== 1 ? "s" : ""} to go`;
+    } else if (es.boxScore && es.boxScore > 0) {
+      const remaining = Math.max(0, es.boxScore - es.totalReps);
+      if (remaining === 0) { toast.style.display = "none"; return; }
+      // Estimate additional sets needed based on current set reps
+      const avgReps = es.sets > 0 ? es.totalReps / es.sets : es.setReps;
+      const estSets = avgReps > 0 ? Math.ceil(remaining / avgReps) : "?";
+      msg = `${remaining} rep${remaining !== 1 ? "s" : ""} to go (~${estSets} more set${estSets !== 1 ? "s" : ""})`;
+    } else {
+      toast.style.display = "none";
+      return;
+    }
+
+    toast.textContent = msg;
+    toast.style.display = "";
+    // Re-trigger animation
+    toast.classList.remove("show");
+    void toast.offsetWidth;
+    toast.classList.add("show");
+
+    // Auto-hide after 4s
+    clearTimeout(this._toastTimeout);
+    this._toastTimeout = setTimeout(() => {
+      toast.classList.remove("show");
+      setTimeout(() => { toast.style.display = "none"; }, 300);
+    }, 4000);
   }
 
   saveCurrentState() {
