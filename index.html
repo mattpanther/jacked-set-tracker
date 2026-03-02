@@ -19,6 +19,12 @@
       rel="stylesheet"
     />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <!-- Firebase SDK (compat) -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    <!-- Google Identity Services -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -26,8 +32,11 @@
     <div id="setup-screen" class="screen">
       <div class="setup-frame">
         <div class="setup-header">
-          <span class="header-icon">🏋️</span>
-          <h1 class="title">SET TRACKER</h1>
+          <div class="setup-header-left">
+            <span class="header-icon">🏋️</span>
+            <h1 class="title">SET TRACKER</h1>
+          </div>
+          <div id="auth-container" class="auth-container"></div>
         </div>
         <div id="continue-card" class="continue-card" style="display: none">
           <div class="continue-info">
@@ -113,6 +122,20 @@
               <span class="ignitor-value">10</span>
               <button class="stepper-btn stepper-up">▲</button>
             </div>
+            <div class="ignitor-weight-stepper">
+              <span class="ignitor-weight-label">WEIGHT (lbs)</span>
+              <div class="ignitor-weight-controls">
+                <button class="stepper-btn ignitor-weight-down">▼</button>
+                <span class="ignitor-weight-value">0</span>
+                <button class="stepper-btn ignitor-weight-up">▲</button>
+              </div>
+              <div class="ignitor-weight-fine">
+                <button class="ignitor-weight-btn" data-delta="-5">-5</button>
+                <button class="ignitor-weight-btn" data-delta="-1">-1</button>
+                <button class="ignitor-weight-btn" data-delta="1">+1</button>
+                <button class="ignitor-weight-btn" data-delta="5">+5</button>
+              </div>
+            </div>
             <button class="ignitor-log-btn">LOG IGNITOR</button>
             <div class="ignitor-result" style="display: none">
               <span class="result-text"></span>
@@ -146,8 +169,14 @@
           <!-- This Set -->
           <div class="set-input-card">
             <div class="set-input-header">
-              <div class="set-input-label">THIS SET</div>
-              <div class="set-input-value">0</div>
+              <div class="set-input-left">
+                <div class="set-input-label">THIS SET</div>
+                <div class="set-input-value">0</div>
+              </div>
+              <div class="sets-display">
+                <div class="sets-label">SETS</div>
+                <div class="sets-value">0</div>
+              </div>
             </div>
             <div class="set-input-buttons">
               <button class="rep-btn" data-delta="1">+1</button>
@@ -157,10 +186,18 @@
             </div>
           </div>
 
-          <!-- Sets Display -->
-          <div class="sets-card">
-            <div class="sets-label">SETS</div>
-            <div class="sets-value">0</div>
+          <!-- Weight (inline, shown after ignitor) -->
+          <div class="weight-card">
+            <div class="weight-input-header">
+              <div class="weight-input-label">WEIGHT (lbs)</div>
+              <div class="weight-input-value">0</div>
+            </div>
+            <div class="weight-input-buttons">
+              <button class="weight-btn" data-delta="1">+1</button>
+              <button class="weight-btn" data-delta="5">+5</button>
+              <button class="weight-btn" data-delta="-1">-1</button>
+              <button class="weight-btn" data-delta="-5">-5</button>
+            </div>
           </div>
 
           <!-- Drop Set Indicator -->
@@ -180,6 +217,9 @@
             <button class="stop-btn">STOP</button>
             <button class="reset-btn">RESET</button>
           </div>
+
+          <!-- Exercise History -->
+          <div class="history-card" style="display: none"></div>
 
           <!-- Remaining Reps Toast -->
           <div class="reps-remaining-toast" style="display: none"></div>
@@ -203,6 +243,8 @@
     </template>
 
     <script src="data.js"></script>
+    <script src="firebase-sync.js"></script>
+    <script src="history.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

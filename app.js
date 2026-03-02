@@ -6,9 +6,10 @@ let state = {
   exerciseIdx: 0,
   pass: 1,
   mode: "1p",
-  exerciseStates: [], // per-exercise: { ignitorReps, path, setReps, totalReps, sets, boxScore, restTime }
+  exerciseStates: [], // per-exercise: { ignitorReps, path, setReps, totalReps, sets, boxScore, restTime, setsLog }
 };
 let players = []; // PlayerTracker instances
+let sessionSaved = false; // flag to avoid double-saving a session
 
 // ===== AUDIO =====
 let audioReady = false,
@@ -207,6 +208,7 @@ function getExState(idx) {
     state.exerciseStates[idx] = {
       ignitorReps: null,
       ignitorInput: mid,
+      ignitorWeight: 0,
       path: defaultPath,
       setReps: 0,
       totalReps: 0,
@@ -214,6 +216,8 @@ function getExState(idx) {
       boxScore: null,
       restTime: 90,
       btjActive: null,
+      setsLog: [],
+      weight: 0,
     };
   }
   return state.exerciseStates[idx];
@@ -287,6 +291,10 @@ function saveState() {
       }),
     );
   } catch (e) {}
+  // Sync to Firestore
+  if (typeof saveTrackerState === 'function') {
+    saveTrackerState(state);
+  }
 }
 function loadState() {
   try {
@@ -299,6 +307,48 @@ function loadState() {
       state.mode = s.mode || "1p";
     }
   } catch (e) {}
+}
+
+async function loadStateFromFirestore() {
+  if (typeof loadTrackerState !== 'function') return;
+  try {
+    const remote = await loadTrackerState();
+    if (remote && remote.month != null) {
+      state.month = remote.month;
+      state.workoutIdx = remote.workoutIdx;
+      state.exerciseIdx = remote.exerciseIdx || 0;
+      state.pass = remote.pass || 1;
+      state.mode = remote.mode || "1p";
+      // Update localStorage to match
+      try {
+        localStorage.setItem(
+          STATE_KEY,
+          JSON.stringify({
+            month: state.month,
+            workoutIdx: state.workoutIdx,
+            exerciseIdx: state.exerciseIdx,
+            pass: state.pass,
+            mode: state.mode,
+          }),
+        );
+      } catch (e) {}
+    }
+  } catch (e) {
+    console.warn('[App] Firestore state load failed, using localStorage:', e);
+  }
+}
+
+function saveCurrentSession() {
+  if (sessionSaved) return;
+  if (state.month == null || state.workoutIdx == null) return;
+  if (!state.exerciseStates.length) return;
+  const w = getWorkout();
+  if (!w || w.isRest) return;
+  const items = getAllItems();
+  if (typeof saveWorkoutSession === 'function') {
+    saveWorkoutSession(state.month, state.workoutIdx, w.name, state.exerciseStates, items);
+    sessionSaved = true;
+  }
 }
 
 // ===== SETUP SCREEN =====
@@ -407,8 +457,11 @@ function goBackDay() {
 
 // ===== TRACKER =====
 function startTracker() {
+  // Save previous session if any
+  saveCurrentSession();
   saveState();
   state.exerciseStates = [];
+  sessionSaved = false;
   document.getElementById("setup-screen").style.display = "none";
   document.getElementById("tracker-screen").style.display = "";
   const w = getWorkout();
@@ -532,6 +585,11 @@ class PlayerTracker {
       resultText: el.querySelector(".result-text"),
       stepUp: el.querySelector(".stepper-up"),
       stepDown: el.querySelector(".stepper-down"),
+      ignitorWeightStepper: el.querySelector(".ignitor-weight-stepper"),
+      ignitorWeightValue: el.querySelector(".ignitor-weight-value"),
+      ignitorWeightUp: el.querySelector(".ignitor-weight-up"),
+      ignitorWeightDown: el.querySelector(".ignitor-weight-down"),
+      ignitorWeightBtns: el.querySelectorAll(".ignitor-weight-btn"),
       pathSelector: el.querySelector(".path-selector"),
       pathDropdown: el.querySelector(".path-dropdown"),
       boxCurrent: el.querySelector(".box-current"),
@@ -541,18 +599,24 @@ class PlayerTracker {
       boxCard: el.querySelector(".box-score-card"),
       setInputValue: el.querySelector(".set-input-value"),
       setsValue: el.querySelector(".sets-value"),
+      weightCard: el.querySelector(".weight-card"),
+      weightValue: el.querySelector(".weight-input-value"),
+      weightBtns: el.querySelectorAll(".weight-btn"),
       timerText: el.querySelector(".timer-text"),
       timerCard: el.querySelector(".timer-card"),
       dropBanner: el.querySelector(".drop-set-banner"),
       dropInfo: el.querySelector(".drop-set-info"),
       btjBanner: el.querySelector(".btj-banner"),
       btjText: el.querySelector(".btj-text"),
+      commitRow: el.querySelector(".commit-row"),
       commitBtn: el.querySelector(".commit-btn"),
+      setInputCard: el.querySelector(".set-input-card"),
       stopBtn: el.querySelector(".stop-btn"),
       resetBtn: el.querySelector(".reset-btn"),
       repBtns: el.querySelectorAll(".rep-btn"),
       restBtns: el.querySelectorAll(".rest-btn"),
       repsToast: el.querySelector(".reps-remaining-toast"),
+      historyCard: el.querySelector(".history-card"),
     };
     this.bindEvents();
   }
@@ -568,11 +632,35 @@ class PlayerTracker {
       es.ignitorInput = Math.max(1, es.ignitorInput - 1);
       this.dom.ignitorValue.textContent = es.ignitorInput;
     };
+    // Ignitor weight steppers
+    this.dom.ignitorWeightUp.onclick = () => {
+      const es = this.getES();
+      es.ignitorWeight = (es.ignitorWeight || 0) + 5;
+      this.dom.ignitorWeightValue.textContent = es.ignitorWeight;
+    };
+    this.dom.ignitorWeightDown.onclick = () => {
+      const es = this.getES();
+      es.ignitorWeight = Math.max(0, (es.ignitorWeight || 0) - 5);
+      this.dom.ignitorWeightValue.textContent = es.ignitorWeight;
+    };
+    this.dom.ignitorWeightBtns.forEach((btn) => {
+      btn.onclick = () => {
+        const es = this.getES();
+        es.ignitorWeight = Math.max(0, (es.ignitorWeight || 0) + parseInt(btn.dataset.delta));
+        this.dom.ignitorWeightValue.textContent = es.ignitorWeight;
+      };
+    });
     this.dom.ignitorLogBtn.onclick = async () => {
       await initAudio();
       this.logIgnitor();
     };
     this.dom.pathDropdown.onchange = () => this.changePath();
+    this.dom.weightBtns.forEach((btn) => {
+      btn.onclick = async () => {
+        await initAudio();
+        this.addWeight(parseInt(btn.dataset.delta));
+      };
+    });
     this.dom.repBtns.forEach((btn) => {
       btn.onclick = async () => {
         await initAudio();
@@ -619,27 +707,42 @@ class PlayerTracker {
     if (item.isCorrective) {
       this.dom.ignitorCard.style.display = "none";
       this.dom.pathSelector.style.display = "none";
+      this.dom.weightCard.style.display = "";
       es.boxScore = item.target;
       es.path = "corrective";
     } else {
       this.dom.ignitorCard.style.display = "";
       this.dom.ignitorRange.textContent = `Aim: ${item.range[0]}-${item.range[1]} reps`;
       this.dom.ignitorValue.textContent = es.ignitorInput;
+      this.dom.ignitorWeightValue.textContent = es.ignitorWeight || 0;
       if (es.ignitorReps != null) {
         this.dom.ignitorCard.dataset.phase = "done";
         this.dom.ignitorLogBtn.style.display = "none";
         this.dom.ignitorResult.style.display = "";
-        this.dom.resultText.textContent = `Logged ${es.ignitorReps} → ${formatPath(es.path)}`;
+        const weightStr = es.weight > 0 ? ` @ ${es.weight} lbs` : '';
+        this.dom.resultText.textContent = `Logged ${es.ignitorReps} → ${formatPath(es.path)}${weightStr}`;
         this.dom.ignitorValue.textContent = es.ignitorReps;
         this.el.querySelector(".ignitor-stepper").style.display = "none";
+        this.dom.ignitorWeightStepper.style.display = "none";
         this.dom.pathSelector.style.display = "";
         this.dom.pathDropdown.value = es.path;
+        // Show workout components after ignitor
+        this.dom.setInputCard.style.display = "";
+        this.dom.weightCard.style.display = "";
+        this.dom.commitRow.style.display = "";
+        this.dom.boxCard.style.display = "";
       } else {
         this.dom.ignitorCard.dataset.phase = "ignitor";
         this.dom.ignitorLogBtn.style.display = "";
         this.dom.ignitorResult.style.display = "none";
         this.el.querySelector(".ignitor-stepper").style.display = "flex";
+        this.dom.ignitorWeightStepper.style.display = "";
         this.dom.pathSelector.style.display = "none";
+        // Hide workout components during ignitor phase
+        this.dom.setInputCard.style.display = "none";
+        this.dom.weightCard.style.display = "none";
+        this.dom.commitRow.style.display = "none";
+        this.dom.boxCard.style.display = "none";
       }
       // Show/hide path options based on month
       const dd = this.dom.pathDropdown;
@@ -656,6 +759,8 @@ class PlayerTracker {
     // Set input
     this.dom.setInputValue.textContent = es.setReps;
     this.dom.setsValue.textContent = es.sets;
+    // Weight
+    this.dom.weightValue.textContent = es.weight || 0;
     // Apply sticky rest override if user chose one
     if (this.userRestOverride != null) {
       es.restTime = this.userRestOverride;
@@ -673,6 +778,41 @@ class PlayerTracker {
     this.dom.btjBanner.style.display = "none";
     // Hide remaining toast on exercise switch
     this.dom.repsToast.style.display = "none";
+    // Load exercise history + pull historical weight for ignitor default
+    if (typeof renderExerciseHistory === 'function') {
+      renderExerciseHistory(this.dom.historyCard, item.name).then((history) => {
+        if (history && history.length > 0 && es.ignitorReps == null && es.ignitorWeight === 0) {
+          // Pull last weight from history as default for ignitor
+          const lastWeight = this._getLastWeightFromHistory(history);
+          if (lastWeight > 0) {
+            es.ignitorWeight = lastWeight;
+            this.dom.ignitorWeightValue.textContent = lastWeight;
+          }
+        }
+        // Also default the main weight card if no weight set yet
+        if (history && history.length > 0 && (es.weight === 0 || es.weight == null)) {
+          const lastWeight = this._getLastWeightFromHistory(history);
+          if (lastWeight > 0) {
+            es.weight = lastWeight;
+            this.dom.weightValue.textContent = lastWeight;
+          }
+        }
+      });
+    }
+  }
+
+  _getLastWeightFromHistory(history) {
+    // Find the most recent session with a weight > 0
+    for (const h of history) {
+      // Check per-set weights first
+      if (h.setsLog && h.setsLog.length > 0) {
+        const firstSet = h.setsLog[0];
+        if (typeof firstSet === 'object' && firstSet.weight > 0) return firstSet.weight;
+      }
+      // Fall back to top-level weight
+      if (h.weight && h.weight > 0) return h.weight;
+    }
+    return 0;
   }
 
   logIgnitor() {
@@ -684,6 +824,7 @@ class PlayerTracker {
     es.boxScore = calcBoxScore(item, es.ignitorReps, es.path);
     es.restTime = this.userRestOverride != null ? this.userRestOverride : getRestForPath(item, es.path);
     es.setReps = es.ignitorReps; // default first set to ignitor reps
+    es.weight = es.ignitorWeight || 0; // flow ignitor weight to first set weight
     playPip();
     this.startTimer(es.restTime);
     this.renderForExercise(item, state.exerciseIdx);
@@ -783,6 +924,13 @@ class PlayerTracker {
     }
   }
 
+  addWeight(delta) {
+    const es = this.getES();
+    es.weight = Math.max(0, (es.weight || 0) + delta);
+    this.dom.weightValue.textContent = es.weight;
+    playPip();
+  }
+
   addReps(delta) {
     const es = this.getES();
     es.setReps = Math.max(0, es.setReps + delta);
@@ -793,8 +941,13 @@ class PlayerTracker {
   commitSet() {
     const es = this.getES();
     if (es.setReps === 0) return;
+    // Log individual set reps + weight
+    if (!es.setsLog) es.setsLog = [];
+    es.setsLog.push({ reps: es.setReps, weight: es.weight || 0 });
     es.totalReps += es.setReps;
     es.sets++;
+    // Mark session as unsaved so it gets persisted
+    sessionSaved = false;
     // Back to Jacked check
     const md = getMonthData();
     const item = getCurrentItem();
@@ -895,7 +1048,10 @@ class PlayerTracker {
     es.setReps = 0;
     es.totalReps = 0;
     es.sets = 0;
+    es.setsLog = [];
+    es.weight = 0;
     es.ignitorReps = null;
+    es.ignitorWeight = 0;
     es.boxScore = null;
     es.btjActive = null;
     const mid = item?.range
@@ -968,7 +1124,17 @@ function formatPath(p) {
 }
 
 // ===== INIT =====
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   loadState();
+  // Render auth UI
+  if (typeof renderAuthUI === 'function') {
+    renderAuthUI('auth-container');
+  }
+  // Try loading state from Firestore (will update if newer data exists)
+  await loadStateFromFirestore();
   showSetup();
+  // Save session on page unload
+  window.addEventListener('beforeunload', () => {
+    saveCurrentSession();
+  });
 });
