@@ -587,6 +587,8 @@ button:active {
 .timer-card {
   grid-area: timer;
   position: relative;
+  container-type: size;
+  overflow: hidden;
 }
 .timer-label-tag {
   position: absolute;
@@ -599,14 +601,18 @@ button:active {
   border-radius: 8px;
   text-transform: uppercase;
   letter-spacing: 0.1em;
+  z-index: 1;
 }
 .timer-text {
-  font-size: clamp(1.5rem, 8vh, 4rem);
+  font-size: clamp(2.5rem, 50cqi, 12rem);
   font-weight: 900;
-  transition: color 0.3s;
+  line-height: 1;
+  transition:
+    color 0.3s,
+    font-size 0.3s;
 }
 .timer-card.active .timer-text {
-  font-size: clamp(3rem, 18vh, 8rem);
+  font-size: clamp(4rem, 70cqi, 20rem);
 }
 .timer-card.active .timer-label-tag {
   font-size: 0.6rem;
