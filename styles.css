@@ -409,16 +409,17 @@ button:active {
 .ignitor-stepper {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  justify-content: space-between;
+  width: 100%;
   margin-bottom: 0.3rem;
 }
 .stepper-btn {
   background: var(--card2);
   color: var(--text);
-  font-size: 1.2rem;
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 0.4rem;
+  font-size: 1.6rem;
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 0.5rem;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -724,7 +725,9 @@ button:active {
   border-top: 1px solid var(--teal);
   opacity: 0;
   transform: translateY(100%);
-  transition: opacity 0.3s ease, transform 0.3s ease;
+  transition:
+    opacity 0.3s ease,
+    transform 0.3s ease;
 }
 .reps-remaining-toast.show {
   opacity: 1;
