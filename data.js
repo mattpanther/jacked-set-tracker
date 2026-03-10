@@ -18,8 +18,9 @@ const TIER_B = { // Secondary exercises (positions 3-4)
 const WORKOUTS = {
   1: {
     name: "Month 1", type: "multiplier",
-    schedule: [
-      { id:"chest-a", name:"Chest A", exercises:[
+    // Workout templates (referenced by schedule)
+    _workouts: {
+      "chest-a": { name:"Chest A", exercises:[
         { name:"DB Bench Press", range:[8,12], tier:"A" },
         { name:"DB Incline Bench Press", range:[8,12], tier:"A" },
         { name:"DB Floor Flys", range:[8,12], tier:"B" },
@@ -27,14 +28,14 @@ const WORKOUTS = {
           paths:{ jackedUp:{min:51,max:75,mult:1,rest:60}, jacked:{min:20,max:50,mult:2,rest:60}, jackedDown:{min:10,max:19,mult:3,rest:150} } },
       ], correctives:[{ name:"Doorway Face Pulls", target:45 }] },
 
-      { id:"back-a", name:"Back A", exercises:[
+      "back-a": { name:"Back A", exercises:[
         { name:"DB Rows", range:[8,12], tier:"A" },
         { name:"Weighted Pullups", range:[8,12], tier:"A" },
         { name:"DB Tripod Rows", range:[8,12], tier:"B" },
         { name:"DB Urlachers", range:[8,12], tier:"B" },
       ], correctives:[{ name:"Bridge & Reach Overs", target:45 }] },
 
-      { id:"triceps-a", name:"Triceps A", exercises:[
+      "triceps-a": { name:"Triceps A", exercises:[
         { name:"Lying DB Tricep Ext.", range:[8,12], tier:"A" },
         { name:"DB JM Press", range:[8,12], tier:"A" },
         { name:"DB Kickbacks", range:[8,12], tier:"B" },
@@ -42,44 +43,42 @@ const WORKOUTS = {
           paths:{ jackedUp:{min:36,max:50,mult:1,rest:60}, jacked:{min:15,max:35,mult:2,rest:90}, jackedDown:{min:7,max:14,mult:3,rest:150} } },
       ], correctives:[{ name:"Hanging Scap Pulls", target:45 }] },
 
-      { id:"legs-a", name:"Legs A", exercises:[
+      "legs-a": { name:"Legs A", exercises:[
         { name:"DB Bulgarian Split Squats", range:[8,12], tier:"A", perSide:true },
         { name:"DB Hip Thrusts", range:[8,12], tier:"A" },
         { name:"DB Step Ups", range:[8,12], tier:"B", perSide:true },
         { name:"DB Alt. Reverse Sprinter Lunges", range:[8,12], tier:"B", perSide:true },
       ], correctives:[{ name:"Bottomed Out Squat Reaches", target:45 }] },
 
-      { id:"shoulders-a", name:"Shoulders A", exercises:[
+      "shoulders-a": { name:"Shoulders A", exercises:[
         { name:"DB OHP", range:[8,12], tier:"A" },
         { name:"DB Side Lateral Raises", range:[8,12], tier:"A" },
         { name:"Alt. DB Front Raises", range:[8,12], tier:"B", perSide:true },
         { name:"DB Abduction Rows", range:[8,12], tier:"B", perSide:true },
       ], correctives:[{ name:"ER Wall Slides", target:45 }] },
 
-      { id:"biceps-a", name:"Biceps A", exercises:[
+      "biceps-a": { name:"Biceps A", exercises:[
         { name:"DB Straight Bar Curls", range:[8,12], tier:"A" },
         { name:"Weighted Chins", range:[8,12], tier:"A" },
         { name:"DB Hammer Curls", range:[8,12], tier:"B" },
         { name:"DB 'No Money' Curls", range:[8,12], tier:"B" },
       ], correctives:[{ name:"Angels and Devils", target:45 }] },
 
-      { id:"rest-1", name:"Rest Day", isRest:true, exercises:[], correctives:[] },
-
-      { id:"chest-b", name:"Chest B", exercises:[
+      "chest-b": { name:"Chest B", exercises:[
         { name:"Weighted Dips", range:[8,12], tier:"A" },
         { name:"DB Underhand Bench Press", range:[8,12], tier:"A" },
         { name:"DB Floor Press", range:[8,12], tier:"B" },
         { name:"Alt. DB UCV Raises", range:[8,12], tier:"B", perSide:true },
       ], correctives:[{ name:"Prone 'W' Raise", target:45 }] },
 
-      { id:"back-b", name:"Back B", exercises:[
+      "back-b": { name:"Back B", exercises:[
         { name:"DB Chest Supported Rows", range:[8,12], tier:"A" },
         { name:"DB Alt. Gorilla Rows", range:[8,12], tier:"A", perSide:true },
         { name:"Double DB Pullovers", range:[8,12], tier:"B" },
         { name:"DB High Pulls", range:[8,12], tier:"B" },
       ], correctives:[{ name:"T-Spine Rotations", target:45 }] },
 
-      { id:"triceps-b", name:"Triceps B", exercises:[
+      "triceps-b": { name:"Triceps B", exercises:[
         { name:"Elbows Tucked DB Bench", range:[8,12], tier:"A" },
         { name:"DB Skull Crushers", range:[8,12], tier:"A" },
         { name:"DB Overhead Extensions", range:[8,12], tier:"B" },
@@ -87,36 +86,37 @@ const WORKOUTS = {
           paths:{ jackedUp:{min:51,max:75,mult:2,rest:60}, jacked:{min:20,max:50,mult:2,rest:90}, jackedDown:{min:10,max:19,mult:3,rest:150} } },
       ], correctives:[{ name:"Inchworms", target:45 }] },
 
-      { id:"legs-b", name:"Legs B", exercises:[
+      "legs-b": { name:"Legs B", exercises:[
         { name:"Alt. Reverse DB Lunges", range:[8,12], tier:"A", perSide:true },
         { name:"DB RDL's", range:[8,12], tier:"A" },
         { name:"DB Goblet Squats", range:[8,12], tier:"B" },
         { name:"Double DB Frog Press", range:[8,12], tier:"B" },
       ], correctives:[{ name:"Jane Fondas", target:45 }] },
 
-      { id:"shoulders-b", name:"Shoulders B", exercises:[
+      "shoulders-b": { name:"Shoulders B", exercises:[
         { name:"DB Cheat Laterals", range:[8,12], tier:"A", perSide:true },
         { name:"Modified DB Bradford Press", range:[8,12], tier:"A" },
         { name:"Single DB Press Outs", range:[8,12], tier:"B", perSide:true },
         { name:"DB Rear Delt Rows", range:[8,12], tier:"B" },
       ], correctives:[{ name:"Lunge and Reach", target:45 }] },
 
-      { id:"biceps-b", name:"Biceps B", exercises:[
+      "biceps-b": { name:"Biceps B", exercises:[
         { name:"Alt. DB Curls", range:[8,12], tier:"A", perSide:true },
         { name:"DB Drag Curls", range:[8,12], tier:"A" },
         { name:"DB Cross Body Hammer Curls", range:[8,12], tier:"B", perSide:true },
         { name:"DB Spider Curls", range:[8,12], tier:"B" },
       ], correctives:[{ name:"Superman Press Outs", target:45 }] },
-
-      { id:"rest-2", name:"Rest Day", isRest:true, exercises:[], correctives:[] },
-    ]
+    },
+    // Day-by-day schedule matching the Athleanx app (Days 1-28)
+    schedule: [] // built dynamically below
   },
 
   2: {
     name: "Month 2", type: "fixed", backToJacked: true,
     dropSetRule: "everyOther", // Jacked to Max: drop set every other set
-    schedule: [
-      { id:"pull-a", name:"Pull A", exercises:[
+    // Workout templates (referenced by schedule)
+    _workouts: {
+      "pull-a": { name:"Pull A", exercises:[
         { name:"DB Rows", range:[4,6], base:25, drop:"DB T-Bar Rows" },
         { name:"DB Straight Bar Curls", range:[4,6], base:25, drop:"DB Waiter Curls" },
         { name:"DB High Pulls", range:[10,12], base:35, drop:"DB Assisted High Pulls" },
@@ -124,7 +124,7 @@ const WORKOUTS = {
         { name:"DB 'No Money' Curls", range:[20,25], base:45, drop:"DB Shovel Curls" },
       ], correctives:[{ name:"Hanging Scap Pulls", target:30 },{ name:"Angels and Devils", target:30 }] },
 
-      { id:"push-a", name:"Push A", exercises:[
+      "push-a": { name:"Push A", exercises:[
         { name:"DB Bench Press", range:[4,6], base:25, drop:"Crush Grip DB Bench Press" },
         { name:"Lying DB Tricep Ext.", range:[4,6], base:25, drop:"Floor DB Tricep Ext." },
         { name:"Modified Bradford Press", range:[10,12], base:35, drop:"DB Over and Backs" },
@@ -132,7 +132,7 @@ const WORKOUTS = {
         { name:"Alt. DB UCV Raises", range:[20,25], base:45, perSide:true, drop:"Cavaliere Crossovers" },
       ], correctives:[{ name:"Doorway Face Pulls", target:30 },{ name:"Bridge & Reach Overs", target:30 }] },
 
-      { id:"legs-a2", name:"Legs A", exercises:[
+      "legs-a2": { name:"Legs A", exercises:[
         { name:"DB Bulgarian Split Squats", range:[6,8], base:30, perSide:true, drop:"DB Goblet Bulgarian Split Squats" },
         { name:"DB Leaning Step Ups", range:[6,8], base:30, perSide:true, drop:"DB Hip Thrusts" },
         { name:"DB Static Creeping Lunges", range:[10,12], base:35, perSide:true, drop:"DB Goblet Static Creeping Lunges" },
@@ -140,9 +140,7 @@ const WORKOUTS = {
         { name:"DB Swings", range:[20,25], base:45, drop:"DB Sumo Drop Squats" },
       ], correctives:[{ name:"Bottomed Out Squat Reaches", target:30 },{ name:"Jane Fondas", target:30 }] },
 
-      { id:"rest-m2-1", name:"Rest Day", isRest:true, exercises:[], correctives:[] },
-
-      { id:"pull-b", name:"Pull B", exercises:[
+      "pull-b": { name:"Pull B", exercises:[
         { name:"Weighted Pullups", range:[4,6], base:25, drop:"Jumping Pullups" },
         { name:"DB Alt. Gorilla Rows", range:[4,6], base:25, perSide:true, drop:"Incline Angled Rows" },
         { name:"DB Hammer Curls", range:[10,12], base:35, drop:"Incline Crush Grip Hammer Curls" },
@@ -150,7 +148,7 @@ const WORKOUTS = {
         { name:"DB Chest Supported Rows", range:[20,25], base:45, drop:"DB Incline Crush Grip Rows" },
       ], correctives:[{ name:"T-Spine Rotations", target:30 },{ name:"Superman Press Outs", target:30 }] },
 
-      { id:"push-b", name:"Push B", exercises:[
+      "push-b": { name:"Push B", exercises:[
         { name:"DB Incline Bench Press", range:[4,6], base:25, drop:"Crush Grip DB Incline Bench" },
         { name:"Alt. DB Front Raises", range:[4,6], base:25, perSide:true, drop:"DB Crush Grip Front Raises" },
         { name:"DB Side Lateral Raises", range:[10,12], base:35, drop:"DB Abduction Rows" },
@@ -158,7 +156,7 @@ const WORKOUTS = {
         { name:"DB Kickbacks", range:[20,25], base:45, drop:"DB Swinging Kickbacks" },
       ], correctives:[{ name:"Prone 'W' Raises", target:30 },{ name:"Inchworms", target:30 }] },
 
-      { id:"legs-b2", name:"Legs B", exercises:[
+      "legs-b2": { name:"Legs B", exercises:[
         { name:"DB RDL's", range:[6,8], base:30, drop:"Single DB RDL's" },
         { name:"DB Rocket Squats", range:[6,8], base:30, drop:"DB Squats (DB's to Floor)" },
         { name:"Double DB Frog Press", range:[10,12], base:35, drop:"DB Frog Press" },
@@ -166,9 +164,7 @@ const WORKOUTS = {
         { name:"DB Plyo Step Ups", range:[20,25], base:45, perSide:true, drop:"DB Goblet Step Ups" },
       ], correctives:[{ name:"Leg Swings", target:30 },{ name:"Hip Drops", target:30 }] },
 
-      { id:"rest-m2-2", name:"Rest Day", isRest:true, exercises:[], correctives:[] },
-
-      { id:"pull-c", name:"Pull C", exercises:[
+      "pull-c": { name:"Pull C", exercises:[
         { name:"DB Haney Shrugs", range:[4,6], base:25, drop:"DB Shrugs" },
         { name:"Weighted Chins", range:[4,6], base:25, drop:"Jumping Chins" },
         { name:"DB Drag Curls", range:[10,12], base:35, drop:"DB Waiter Drag Curls" },
@@ -176,7 +172,7 @@ const WORKOUTS = {
         { name:"DB Urlachers", range:[20,25], base:45, drop:"DB High Pulls" },
       ], correctives:[{ name:"Hanging Scap Pulls", target:30 },{ name:"Superman Press Outs", target:30 }] },
 
-      { id:"push-c", name:"Push C", exercises:[
+      "push-c": { name:"Push C", exercises:[
         { name:"DB OHP", range:[4,6], base:25, drop:"DB Over and Backs" },
         { name:"Weighted Dips", range:[4,6], base:25, drop:"Decline DB Bench Press" },
         { name:"DB JM Press", range:[10,12], base:35, drop:"DB PJR Pullovers" },
@@ -184,7 +180,7 @@ const WORKOUTS = {
         { name:"DB Press Outs", range:[20,25], base:45, drop:"Single DB Press Outs" },
       ], correctives:[{ name:"Doorway Face Pulls", target:30 },{ name:"Lunge and Reach", target:30 }] },
 
-      { id:"legs-c2", name:"Legs C", exercises:[
+      "legs-c2": { name:"Legs C", exercises:[
         { name:"Alt. Reverse DB Lunges", range:[6,8], base:30, perSide:true, drop:"Single DB Split Squats" },
         { name:"DB Hip Thrusts", range:[6,8], base:30, drop:"Single DB Hip Thrusts" },
         { name:"DB Single Leg RDL Calf Raises", range:[10,12], base:35, perSide:true, drop:"DB RDL Calf Raises" },
@@ -192,8 +188,20 @@ const WORKOUTS = {
         { name:"DB Goblet Squats", range:[20,25], base:45, drop:"DB Drop Squats" },
       ], correctives:[{ name:"Bottomed Out Squat Reaches", target:30 },{ name:"Leg Swings", target:30 }] },
 
-      { id:"rest-m2-3", name:"Rest Day", isRest:true, exercises:[], correctives:[] },
-    ]
+      "pull-challenge": { name:"Pull Challenge", isChallenge:true, exercises:[
+        // Pull-focused challenge exercises
+      ], correctives:[] },
+
+      "push-challenge": { name:"Push Challenge", isChallenge:true, exercises:[
+        // Push-focused challenge exercises
+      ], correctives:[] },
+
+      "legs-challenge": { name:"Legs Challenge", isChallenge:true, exercises:[
+        // Legs-focused challenge exercises
+      ], correctives:[] },
+    },
+    // Day-by-day schedule matching the Athleanx app (Days 29-56)
+    schedule: [] // built dynamically below
   },
 
   3: {
@@ -266,6 +274,49 @@ const WORKOUTS = {
     schedule: [] // built dynamically below
   }
 };
+
+// Build Month 1 schedule from templates (Days 1-28)
+(function() {
+  const REST = { name:"Rest Day", isRest:true, exercises:[], correctives:[] };
+  const w = WORKOUTS[1]._workouts;
+  // Week 1-2 sequence (days 1-14)
+  const baseSeq = [
+    "chest-a","back-a","triceps-a","legs-a","shoulders-a","biceps-a","REST",
+    "chest-b","back-b","triceps-b","legs-b","shoulders-b","biceps-b","REST",
+  ];
+  // Weeks 3-4 repeat same exercises as "Beat Your Totals" (days 15-28)
+  const bytSeq = baseSeq.map(id => id === "REST" ? "REST" : id + "-byt");
+  const seq = [...baseSeq, ...bytSeq];
+  WORKOUTS[1].schedule = seq.map((id, i) => {
+    if (id === "REST") return { ...REST, id:`rest-m1-${i}` };
+    const isByt = id.endsWith("-byt");
+    const tmplId = isByt ? id.replace("-byt", "") : id;
+    const tmpl = w[tmplId];
+    const name = isByt ? `${tmpl.name} (Beat Your Totals)` : tmpl.name;
+    return { id:`${id}-d${i}`, name, exercises:[...tmpl.exercises], correctives:[...tmpl.correctives] };
+  });
+})();
+
+// Build Month 2 schedule from templates (Days 29-56)
+(function() {
+  const REST = { name:"Rest Day", isRest:true, exercises:[], correctives:[] };
+  const w = WORKOUTS[2]._workouts;
+  const seq = [
+    // Week 5
+    "pull-a","push-a","legs-a2","REST","pull-b","push-b","legs-b2",
+    // Week 6
+    "REST","pull-c","push-c","legs-c2","REST","pull-a","push-a",
+    // Week 7
+    "legs-a2","REST","pull-b","push-b","legs-b2","REST","pull-c",
+    // Week 8
+    "push-c","legs-c2","REST","pull-challenge","push-challenge","legs-challenge","REST",
+  ];
+  WORKOUTS[2].schedule = seq.map((id, i) => {
+    if (id === "REST") return { ...REST, id:`rest-m2-${i}` };
+    const tmpl = w[id];
+    return { id:`${id}-d${i}`, name:tmpl.name, exercises:[...tmpl.exercises], correctives:[...tmpl.correctives], isChallenge:tmpl.isChallenge };
+  });
+})();
 
 // Build Month 3 schedule from templates (Days 57-84)
 (function() {

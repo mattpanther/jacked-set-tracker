@@ -103,9 +103,18 @@ function launchFireworks(container) {
 
   const particles = [];
   const colors = [
-    "#ff2d55", "#ff9500", "#ffcc00", "#34c759",
-    "#00c7be", "#007aff", "#af52de", "#ff375f",
-    "#ff6b6b", "#ffd93d", "#6bcb77", "#4d96ff",
+    "#ff2d55",
+    "#ff9500",
+    "#ffcc00",
+    "#34c759",
+    "#00c7be",
+    "#007aff",
+    "#af52de",
+    "#ff375f",
+    "#ff6b6b",
+    "#ffd93d",
+    "#6bcb77",
+    "#4d96ff",
   ];
 
   // Launch several bursts across the area
@@ -139,8 +148,13 @@ function launchFireworks(container) {
     const elapsed = now - startTime;
     let alive = false;
     for (const p of particles) {
-      if (elapsed < p.delay) { alive = true; continue; }
-      if (!p.born) { p.born = true; }
+      if (elapsed < p.delay) {
+        alive = true;
+        continue;
+      }
+      if (!p.born) {
+        p.born = true;
+      }
       p.x += p.vx;
       p.y += p.vy;
       p.vy += 0.05; // gravity
@@ -284,6 +298,7 @@ function saveState() {
         exerciseIdx: state.exerciseIdx,
         pass: state.pass,
         mode: state.mode,
+        inTracker: state.inTracker || false,
       }),
     );
   } catch (e) {}
@@ -297,6 +312,7 @@ function loadState() {
       state.exerciseIdx = s.exerciseIdx || 0;
       state.pass = s.pass || 1;
       state.mode = s.mode || "1p";
+      state.inTracker = s.inTracker || false;
     }
   } catch (e) {}
 }
@@ -389,7 +405,20 @@ function renderDayGrid() {
 function advanceDay() {
   const md = WORKOUTS[state.month];
   if (!md) return;
-  state.workoutIdx = (state.workoutIdx + 1) % md.schedule.length;
+  const nextIdx = state.workoutIdx + 1;
+  if (nextIdx >= md.schedule.length) {
+    // Cross-month: advance to next month
+    const nextMonth = state.month + 1;
+    if (WORKOUTS[nextMonth]) {
+      state.month = nextMonth;
+      state.workoutIdx = 0;
+    } else {
+      // Already at last month, wrap to start of current month
+      state.workoutIdx = 0;
+    }
+  } else {
+    state.workoutIdx = nextIdx;
+  }
   state.exerciseIdx = 0;
   saveState();
   renderContinueCard();
@@ -398,8 +427,20 @@ function advanceDay() {
 function goBackDay() {
   const md = WORKOUTS[state.month];
   if (!md) return;
-  state.workoutIdx =
-    (state.workoutIdx - 1 + md.schedule.length) % md.schedule.length;
+  const prevIdx = state.workoutIdx - 1;
+  if (prevIdx < 0) {
+    // Cross-month: go back to previous month
+    const prevMonth = state.month - 1;
+    if (WORKOUTS[prevMonth]) {
+      state.month = prevMonth;
+      state.workoutIdx = WORKOUTS[prevMonth].schedule.length - 1;
+    } else {
+      // Already at first month, wrap to end of current month
+      state.workoutIdx = md.schedule.length - 1;
+    }
+  } else {
+    state.workoutIdx = prevIdx;
+  }
   state.exerciseIdx = 0;
   saveState();
   renderContinueCard();
@@ -407,6 +448,7 @@ function goBackDay() {
 
 // ===== TRACKER =====
 function startTracker() {
+  state.inTracker = true;
   saveState();
   state.exerciseStates = [];
   document.getElementById("setup-screen").style.display = "none";
@@ -430,7 +472,11 @@ function startTracker() {
 }
 
 function setupRestNavButtons() {
-  document.getElementById("back-btn").onclick = () => showSetup();
+  document.getElementById("back-btn").onclick = () => {
+    state.inTracker = false;
+    saveState();
+    showSetup();
+  };
   document.getElementById("next-workout-btn").onclick = () => {
     advanceDay();
     startTracker();
@@ -491,6 +537,8 @@ function renderExercise() {
   document.getElementById("next-ex").onclick = () => navigateExercise(1);
   document.getElementById("back-btn").onclick = () => {
     players.forEach((p) => p.stopTimer());
+    state.inTracker = false;
+    saveState();
     showSetup();
   };
   document.getElementById("next-workout-btn").onclick = () => {
@@ -584,12 +632,12 @@ class PlayerTracker {
       this.commitSet();
     };
     this.dom.stopBtn.onclick = () => this.stopTimer();
-  this.dom.timerCard.onclick = async () => {
-    if (this.dom.timerCard.classList.contains('done')) {
-      await initAudio();
-      this.commitSet();
-    }
-  };
+    this.dom.timerCard.onclick = async () => {
+      if (this.dom.timerCard.classList.contains("done")) {
+        await initAudio();
+        this.commitSet();
+      }
+    };
     this.dom.resetBtn.onclick = () => this.resetExercise();
     this.dom.restBtns.forEach((btn) => {
       btn.onclick = async () => {
@@ -682,7 +730,10 @@ class PlayerTracker {
     es.ignitorReps = es.ignitorInput;
     es.path = detectPath(item, es.ignitorReps);
     es.boxScore = calcBoxScore(item, es.ignitorReps, es.path);
-    es.restTime = this.userRestOverride != null ? this.userRestOverride : getRestForPath(item, es.path);
+    es.restTime =
+      this.userRestOverride != null
+        ? this.userRestOverride
+        : getRestForPath(item, es.path);
     es.setReps = es.ignitorReps; // default first set to ignitor reps
     playPip();
     this.startTimer(es.restTime);
@@ -696,7 +747,10 @@ class PlayerTracker {
     es.path = this.dom.pathDropdown.value;
     if (es.ignitorReps != null) {
       es.boxScore = calcBoxScore(item, es.ignitorReps, es.path);
-      es.restTime = this.userRestOverride != null ? this.userRestOverride : getRestForPath(item, es.path);
+      es.restTime =
+        this.userRestOverride != null
+          ? this.userRestOverride
+          : getRestForPath(item, es.path);
     }
     this.updateBoxScore(es);
     this.dom.restBtns.forEach((b) =>
@@ -812,7 +866,10 @@ class PlayerTracker {
       } else if (es.btjActive) {
         es.btjActive = null;
         this.dom.btjBanner.style.display = "none";
-        es.restTime = this.userRestOverride != null ? this.userRestOverride : getRestForPath(item, es.path);
+        es.restTime =
+          this.userRestOverride != null
+            ? this.userRestOverride
+            : getRestForPath(item, es.path);
       }
       this.dom.restBtns.forEach((b) =>
         b.classList.toggle("active", parseInt(b.dataset.time) === es.restTime),
@@ -827,9 +884,13 @@ class PlayerTracker {
     const useSetCount = this.isJttmSetMode(item, es);
     let completed = false;
     if (useSetCount) {
-      if (es.sets >= item.jttmSets) { playTronComplete(); completed = true; }
+      if (es.sets >= item.jttmSets) {
+        playTronComplete();
+        completed = true;
+      }
     } else if (es.boxScore && es.totalReps >= es.boxScore) {
-      playTronComplete(); completed = true;
+      playTronComplete();
+      completed = true;
     }
     if (completed) {
       const fw = state.mode === "2p" ? this.el : null;
@@ -924,7 +985,10 @@ class PlayerTracker {
       msg = `${remaining} set${remaining !== 1 ? "s" : ""} to go`;
     } else if (es.boxScore && es.boxScore > 0) {
       const remaining = Math.max(0, es.boxScore - es.totalReps);
-      if (remaining === 0) { toast.style.display = "none"; return; }
+      if (remaining === 0) {
+        toast.style.display = "none";
+        return;
+      }
       // Estimate additional sets needed based on current set reps
       const avgReps = es.sets > 0 ? es.totalReps / es.sets : es.setReps;
       const estSets = avgReps > 0 ? Math.ceil(remaining / avgReps) : "?";
@@ -945,7 +1009,9 @@ class PlayerTracker {
     clearTimeout(this._toastTimeout);
     this._toastTimeout = setTimeout(() => {
       toast.classList.remove("show");
-      setTimeout(() => { toast.style.display = "none"; }, 300);
+      setTimeout(() => {
+        toast.style.display = "none";
+      }, 300);
     }, 4000);
   }
 
@@ -970,5 +1036,9 @@ function formatPath(p) {
 // ===== INIT =====
 document.addEventListener("DOMContentLoaded", () => {
   loadState();
-  showSetup();
+  if (state.inTracker && state.month != null && state.workoutIdx != null) {
+    startTracker();
+  } else {
+    showSetup();
+  }
 });
