@@ -343,6 +343,9 @@ button:active {
 .two-player .player-tag {
   display: block;
 }
+.two-player .timer-text {
+  font-size: min(60cqh, 40cqi);
+}
 
 /* Player Grid - responsive */
 .player-grid {

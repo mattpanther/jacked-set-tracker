@@ -6,7 +6,7 @@ let state = {
   exerciseIdx: 0,
   pass: 1,
   mode: "1p",
-  exerciseStates: [], // per-exercise: { ignitorReps, path, setReps, totalReps, sets, boxScore, restTime }
+  exerciseStates: [[], []], // per-player, per-exercise: { ignitorReps, path, setReps, totalReps, sets, boxScore, restTime }
 };
 let players = []; // PlayerTracker instances
 
@@ -207,8 +207,9 @@ function getAllItems() {
 function getCurrentItem() {
   return getAllItems()[state.exerciseIdx];
 }
-function getExState(idx) {
-  if (!state.exerciseStates[idx]) {
+function getExState(playerIdx, idx) {
+  if (!state.exerciseStates[playerIdx]) state.exerciseStates[playerIdx] = [];
+  if (!state.exerciseStates[playerIdx][idx]) {
     const item = getAllItems()[idx];
     const defaultPath = item?.isCorrective
       ? "corrective"
@@ -218,7 +219,7 @@ function getExState(idx) {
     const mid = item?.range
       ? Math.round((item.range[0] + item.range[1]) / 2)
       : 10;
-    state.exerciseStates[idx] = {
+    state.exerciseStates[playerIdx][idx] = {
       ignitorReps: null,
       ignitorInput: mid,
       path: defaultPath,
@@ -230,7 +231,7 @@ function getExState(idx) {
       btjActive: null,
     };
   }
-  return state.exerciseStates[idx];
+  return state.exerciseStates[playerIdx][idx];
 }
 
 function calcBoxScore(item, ignitorReps, path) {
@@ -450,7 +451,7 @@ function goBackDay() {
 function startTracker() {
   state.inTracker = true;
   saveState();
-  state.exerciseStates = [];
+  state.exerciseStates = [[], []];
   document.getElementById("setup-screen").style.display = "none";
   document.getElementById("tracker-screen").style.display = "";
   const w = getWorkout();
@@ -531,7 +532,7 @@ function renderExercise() {
   document.getElementById("exercise-name").textContent = item.name;
   document.getElementById("exercise-count").textContent =
     `(${idx + 1}/${items.length})`;
-  players.forEach((p) => p.renderForExercise(item, idx));
+  players.forEach((p) => p.renderForExercise(item, idx, true));
   // Nav buttons
   document.getElementById("prev-ex").onclick = () => navigateExercise(-1);
   document.getElementById("next-ex").onclick = () => navigateExercise(1);
@@ -658,11 +659,11 @@ class PlayerTracker {
   }
 
   getES() {
-    return getExState(state.exerciseIdx);
+    return getExState(this.id, state.exerciseIdx);
   }
 
-  renderForExercise(item, idx) {
-    const es = getExState(idx);
+  renderForExercise(item, idx, stopTimer) {
+    const es = getExState(this.id, idx);
     // Ignitor
     if (item.isCorrective) {
       this.dom.ignitorCard.style.display = "none";
@@ -712,9 +713,10 @@ class PlayerTracker {
     this.dom.restBtns.forEach((b) =>
       b.classList.toggle("active", parseInt(b.dataset.time) === es.restTime),
     );
-    // Timer
-    this.dom.timerText.textContent = "--";
-    this.dom.timerCard.className = "timer-card";
+    // Timer — only reset if explicitly told (exercise navigation), not on re-render
+    if (stopTimer) {
+      this.stopTimer();
+    }
     // Drop set banner
     this.updateDropSet(es);
     // BTJ banner
@@ -905,14 +907,41 @@ class PlayerTracker {
       const restTime = es.restTime;
       const fromIdx = state.exerciseIdx;
       this.startTimer(restTime);
-      setTimeout(() => {
-        if (state.exerciseIdx !== fromIdx) return; // user already navigated
-        players.forEach((p) => p.saveCurrentState());
-        state.exerciseIdx = fromIdx + 1;
-        saveState();
-        renderExercise();
-        // Timer continues running from commitSet — don't restart
-      }, 1500);
+      // In 2P mode, only auto-advance if BOTH players have completed
+      if (state.mode === "2p") {
+        const otherPlayer = players.find((p) => p.id !== this.id);
+        if (otherPlayer) {
+          const otherEs = getExState(otherPlayer.id, fromIdx);
+          const otherItem = getAllItems()[fromIdx];
+          const otherUseSetCount = otherPlayer.isJttmSetMode(otherItem, otherEs);
+          let otherCompleted = false;
+          if (otherUseSetCount) {
+            otherCompleted = otherEs.sets >= otherItem.jttmSets;
+          } else if (otherEs.boxScore) {
+            otherCompleted = otherEs.totalReps >= otherEs.boxScore;
+          }
+          if (!otherCompleted) {
+            // Other player hasn't finished — don't auto-advance
+          } else {
+            setTimeout(() => {
+              if (state.exerciseIdx !== fromIdx) return;
+              players.forEach((p) => p.saveCurrentState());
+              state.exerciseIdx = fromIdx + 1;
+              saveState();
+              renderExercise();
+            }, 1500);
+          }
+        }
+      } else {
+        setTimeout(() => {
+          if (state.exerciseIdx !== fromIdx) return; // user already navigated
+          players.forEach((p) => p.saveCurrentState());
+          state.exerciseIdx = fromIdx + 1;
+          saveState();
+          renderExercise();
+          // Timer continues running from commitSet — don't restart
+        }, 1500);
+      }
     } else {
       this.startTimer(es.restTime);
     }
