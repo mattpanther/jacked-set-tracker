@@ -524,7 +524,7 @@ function setupModeToggle() {
   };
 }
 
-function renderExercise() {
+function renderExercise(keepTimers) {
   const items = getAllItems();
   const idx = state.exerciseIdx;
   const item = items[idx];
@@ -532,7 +532,7 @@ function renderExercise() {
   document.getElementById("exercise-name").textContent = item.name;
   document.getElementById("exercise-count").textContent =
     `(${idx + 1}/${items.length})`;
-  players.forEach((p) => p.renderForExercise(item, idx, true));
+  players.forEach((p) => p.renderForExercise(item, idx, !keepTimers));
   // Nav buttons
   document.getElementById("prev-ex").onclick = () => navigateExercise(-1);
   document.getElementById("next-ex").onclick = () => navigateExercise(1);
@@ -704,7 +704,7 @@ class PlayerTracker {
     this.updateBoxScore(es);
     // Set input
     this.dom.setInputValue.textContent = es.setReps;
-    this.dom.setsValue.textContent = es.sets;
+    this.updateRepsLeft(es);
     // Apply sticky rest override if user chose one
     if (this.userRestOverride != null) {
       es.restTime = this.userRestOverride;
@@ -799,6 +799,22 @@ class PlayerTracker {
     }
   }
 
+  updateRepsLeft(es) {
+    const item = getCurrentItem();
+    const useSetCount = this.isJttmSetMode(item, es);
+    if (useSetCount) {
+      // JttM Month 3: show sets remaining
+      const remaining = Math.max(0, item.jttmSets - es.sets);
+      this.dom.setsValue.textContent = remaining === 0 ? "✅" : remaining;
+    } else if (es.boxScore) {
+      // Normal mode: show reps remaining
+      const remaining = Math.max(0, es.boxScore - es.totalReps);
+      this.dom.setsValue.textContent = remaining === 0 ? "✅" : remaining;
+    } else {
+      this.dom.setsValue.textContent = "--";
+    }
+  }
+
   isJttmSetMode(item, es) {
     return (
       state.month === 3 &&
@@ -879,7 +895,7 @@ class PlayerTracker {
     }
     // setReps stays the same - default next set to last value
     this.dom.setInputValue.textContent = es.setReps;
-    this.dom.setsValue.textContent = es.sets;
+    this.updateRepsLeft(es);
     this.updateBoxScore(es);
     this.updateDropSet(es);
     // Check completion
@@ -928,7 +944,7 @@ class PlayerTracker {
               players.forEach((p) => p.saveCurrentState());
               state.exerciseIdx = fromIdx + 1;
               saveState();
-              renderExercise();
+              renderExercise(true);
             }, 1500);
           }
         }
@@ -938,8 +954,7 @@ class PlayerTracker {
           players.forEach((p) => p.saveCurrentState());
           state.exerciseIdx = fromIdx + 1;
           saveState();
-          renderExercise();
-          // Timer continues running from commitSet — don't restart
+          renderExercise(true);
         }, 1500);
       }
     } else {

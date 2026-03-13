@@ -1,4 +1,4 @@
-const CACHE_NAME = "set-tracker-v5";
+const CACHE_NAME = "set-tracker-v7";
 const ASSETS = [
   "./",
   "./index.html",
